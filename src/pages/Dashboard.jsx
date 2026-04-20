@@ -255,7 +255,7 @@ function Dashboard() {
                       environment-image="neutral"
                       camera-target={cameraPreset.target}
                       camera-orbit={cameraPreset.orbit}
-                      orientation="90deg 0deg 0deg"
+                      orientation="0deg 0deg 180deg"
                       min-camera-orbit="auto 55deg auto"
                       max-camera-orbit="auto 90deg auto"
                       interaction-prompt="none"
