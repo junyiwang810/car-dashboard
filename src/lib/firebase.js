@@ -28,6 +28,16 @@ if (hasFirebaseConfig) {
   database = getDatabase(app)
 }
 
-const activePartRef = database ? ref(database, 'dashboard/active_part') : null
+const ACTIVE_CAR_PART_PATH = 'dashboard/activeCarPart'
 
-export { activePartRef, database, firebaseConfig, hasFirebaseConfig }
+const activeCarPartRef = database ? ref(database, ACTIVE_CAR_PART_PATH) : null
+const activePartRef = activeCarPartRef
+
+export {
+  ACTIVE_CAR_PART_PATH,
+  activeCarPartRef,
+  activePartRef,
+  database,
+  firebaseConfig,
+  hasFirebaseConfig,
+}

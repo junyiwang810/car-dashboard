@@ -1,58 +1,68 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { set } from 'firebase/database'
 import { useSearchParams } from 'react-router-dom'
-import { PARTS } from '../data/dashboardContent.js'
-import { activePartRef, hasFirebaseConfig } from '../lib/firebase.js'
+import { PARTS, resolvePartSelection } from '../data/dashboardContent.js'
+import {
+  ACTIVE_CAR_PART_PATH,
+  activeCarPartRef,
+  hasFirebaseConfig,
+} from '../lib/firebase.js'
+
+const fallbackPart = 'Engine'
 
 function TapRemote() {
   const [searchParams] = useSearchParams()
   const requestedPart = searchParams.get('part')
-  const normalizedPart = useMemo(
-    () => PARTS.find((part) => part.toLowerCase() === requestedPart?.toLowerCase()),
-    [requestedPart],
-  )
+  const queryPart = useMemo(() => resolvePartSelection(requestedPart), [requestedPart])
+  const [manualMenuOpen, setManualMenuOpen] = useState(false)
   const [manualPart, setManualPart] = useState(null)
   const [status, setStatus] = useState(
-    normalizedPart
-      ? `Relay detected ${normalizedPart}. Updating dashboard now.`
-      : 'Standby page ready. Keep this page open, then tap a programmed NFC tag and open the iPhone notification.',
+    queryPart
+      ? `Detected ${queryPart}. Updating the dashboard now.`
+      : 'Keep this phone open, then tap an NFC tag on the model.',
   )
-  const selectedPart = manualPart ?? normalizedPart ?? 'Engine'
+  const selectedPart = manualPart ?? queryPart ?? fallbackPart
 
-  async function writePart(part) {
-    if (!hasFirebaseConfig || !activePartRef) {
-      setStatus(`Firebase not configured. Previewing ${part} only.`)
+  const rememberRelayState = useCallback((part, nextStatus) => {
+    setStatus(nextStatus)
+  }, [])
+
+  const publishPart = useCallback(async (part) => {
+    if (!hasFirebaseConfig || !activeCarPartRef) {
+      rememberRelayState(part, `Firebase is not configured. Previewing ${part} only.`)
       return
     }
 
-    await set(activePartRef, part)
-    setStatus(`${part} published to dashboard/active_part`)
-  }
+    await set(activeCarPartRef, {
+      part,
+      updatedAt: Date.now(),
+    })
+    rememberRelayState(part, `${part} sent to ${ACTIVE_CAR_PART_PATH}`)
+  }, [rememberRelayState])
 
   useEffect(() => {
-    if (!normalizedPart) {
+    if (!queryPart) {
       return
     }
 
     let cancelled = false
+    let resetTimerId = null
 
     async function syncQueryPart() {
-      if (!hasFirebaseConfig || !activePartRef) {
+      try {
+        await publishPart(queryPart)
+
         if (!cancelled) {
-          setStatus(`Firebase not configured. Previewing ${normalizedPart} only.`)
+          resetTimerId = window.setTimeout(() => {
+            if (!cancelled) {
+              window.location.replace('/tap')
+            }
+          }, 1800)
         }
-        return
-      }
-
-      await set(activePartRef, normalizedPart)
-
-      if (!cancelled) {
-        setStatus(`${normalizedPart} published to dashboard/active_part`)
-        window.setTimeout(() => {
-          if (!cancelled) {
-            window.location.replace('/tap')
-          }
-        }, 1800)
+      } catch (error) {
+        if (!cancelled) {
+          rememberRelayState(queryPart, `Unable to send ${queryPart}. ${error.message}`)
+        }
       }
     }
 
@@ -60,91 +70,80 @@ function TapRemote() {
 
     return () => {
       cancelled = true
+      if (resetTimerId) {
+        window.clearTimeout(resetTimerId)
+      }
     }
-  }, [normalizedPart])
+  }, [publishPart, queryPart, rememberRelayState])
 
-  async function publishPart(part) {
+  async function handleManualPublish(part) {
     setManualPart(part)
-    await writePart(part)
+
+    try {
+      await publishPart(part)
+    } catch (error) {
+      rememberRelayState(part, `Unable to send ${part}. ${error.message}`)
+    }
   }
 
   return (
     <main className="app-shell">
-      <div className="remote-shell">
-        <section className="panel remote-stack">
-          <header className="panel-header">
-            <div>
-              <p className="eyebrow">iPhone NFC Relay</p>
-              <h1 className="panel-title">Standby Tag Receiver</h1>
-              <p className="panel-subtitle">
-                This page stays on standby. On iPhone, the NFC tag itself opens
-                the hosted URL, and that URL pushes the active subsystem to the
-                dashboard listener.
-              </p>
-            </div>
-            <div className={`status-chip ${hasFirebaseConfig ? 'active' : 'warning'}`}>
-              {hasFirebaseConfig ? 'Remote online' : 'Remote offline'}
-            </div>
+      <div className="remote-shell remote-shell-simple">
+        <section className="panel remote-stack remote-stack-simple">
+          <header className="remote-hero">
+            <p className="eyebrow">NFC Relay</p>
+            <h1 className="remote-title">Ready to Scan</h1>
+            <p className="remote-lead">Tap a car-part tag to update the dashboard lesson.</p>
           </header>
 
-          <div className="remote-body">
-            <div className="remote-part-readout">
-              <div>
-                <p className="metric-label">Relay Status</p>
-                <div className="remote-part-value">
-                  {normalizedPart ? 'Tag received' : 'Standby'}
-                </div>
-              </div>
+          <section className="remote-status-card">
+            <div className={`status-chip ${hasFirebaseConfig ? 'active' : 'warning'}`}>
+              {hasFirebaseConfig ? 'Phone ready' : 'Phone offline'}
+            </div>
+
+            <div className="remote-part-readout remote-part-readout-simple">
               <div>
                 <p className="metric-label">Current Part</p>
-                <div className="metric-value">
-                  {normalizedPart ?? 'Waiting for NFC tag'}
-                </div>
+                <div className="remote-part-value">{queryPart ?? 'Waiting for scan'}</div>
+              </div>
+              <div>
+                <p className="metric-label">Status</p>
+                <div className="metric-value">{status}</div>
               </div>
             </div>
+          </section>
 
-            <p className="helper-text">{status}</p>
+          <section className="notice remote-instructions">
+            <strong>How to use it:</strong> keep this page open on the phone, then tap an NFC tag.
+            The phone opens the matching URL and sends that part to the main dashboard.
+          </section>
 
-            <div className="notice">
-              <strong>How it works on iPhone:</strong> this page does not read
-              NFC itself. Tapping an NFC tag shows an iPhone notification, and
-              opening that notification launches a hosted URL like{' '}
-              <span className="inline-code">/tap?part=Engine</span>. That URL
-              relays the part to Firebase, updates the laptop, then returns to
-              standby automatically.
-            </div>
+          <section className="remote-fallback">
+            <button
+              className="btn"
+              type="button"
+              onClick={() => setManualMenuOpen((open) => !open)}
+              aria-expanded={manualMenuOpen}
+              aria-controls="remote-manual-menu"
+            >
+              {manualMenuOpen ? 'Hide Manual Controls' : 'Manual Controls'}
+            </button>
 
-            <div className="notice">
-              <strong>Chrome on iPhone note:</strong> Chrome still uses the
-              iPhone system NFC behavior, so you should expect the notification
-              handoff instead of direct in-page scanning.
-            </div>
-
-            <div className="notice">
-              <strong>Troubleshooting fallback:</strong> if you need to simulate
-              a tag open without hardware, use the buttons below.
-            </div>
-
-            <div className="remote-actions">
-              {PARTS.map((part) => (
-                <button
-                  key={part}
-                  className={`btn ${part === selectedPart ? 'btn-primary' : ''}`}
-                  type="button"
-                  onClick={() => publishPart(part)}
-                >
-                  Simulate {part}
-                </button>
-              ))}
-            </div>
-            <div className="notice">
-              <strong>NFC tag URL set:</strong>{' '}
-              <span className="inline-code">/tap?part=Engine</span>,{' '}
-              <span className="inline-code">/tap?part=Drivetrain</span>,{' '}
-              <span className="inline-code">/tap?part=Wheels</span>,{' '}
-              <span className="inline-code">/tap?part=Fuel%20Tank</span>.
-            </div>
-          </div>
+            {manualMenuOpen ? (
+              <div id="remote-manual-menu" className="remote-actions remote-actions-simple">
+                {PARTS.map((part) => (
+                  <button
+                    key={part}
+                    className={`btn ${part === selectedPart ? 'btn-primary' : ''}`}
+                    type="button"
+                    onClick={() => handleManualPublish(part)}
+                  >
+                    {part}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
         </section>
       </div>
     </main>
