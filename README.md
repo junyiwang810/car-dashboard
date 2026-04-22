@@ -1,73 +1,55 @@
-Auto Dashboard
-Auto Dashboard is a React-based web application that serves as an interactive educational display for learning about car parts. It features a high-fidelity 3D model of a car and uses a mobile "NFC Relay" to trigger specific lessons when physical components are scanned.
+# 🚗 Auto Dashboard
 
-Features
-Interactive 3D Viewer: Uses @react-three/fiber and @react-three/drei to render a 3D car model (golf.glb) with dynamic camera transitions based on the selected lesson.
+Auto Dashboard is a React-based interactive educational exhibit designed to teach car mechanics through a high-fidelity 3D interface. The project features a unique **Physical-to-Digital sync** system where a mobile "NFC Relay" triggers real-time 3D lessons on a main dashboard display.
 
-Physical-to-Digital Sync: Utilizes Firebase Realtime Database to synchronize a desktop "Dashboard" with a mobile "Tap Remote".
+## 🌟 Key Features
 
-NFC Lesson Triggering: The mobile TapRemote detects URL parameters (intended to be written to NFC tags) to automatically update the main display to the corresponding automotive part.
+* **Interactive 3D Viewer**: Utilizes `react-three-fiber` to render a detailed 3D car model (`golf.glb`) with dynamic camera transitions that focus on specific components during lessons.
+* **Physical-to-Digital Sync**: Uses Firebase Realtime Database to synchronize the state between a desktop "Dashboard" and a mobile "Tap Remote".
+* **NFC Lesson Triggering**: Mobile devices detect URL parameters (intended for NFC tags) to automatically update the dashboard to the corresponding automotive part, such as the engine or brakes.
+* **Guided Educational Content**: Includes structured lessons for the Engine, Brakes, and Drivetrain, featuring multi-step slides and progress tracking.
+* **Introductory Wizard**: A step-by-step onboarding flow powered by `framer-motion` to guide users through the physical and digital exhibit.
 
-Guided Educational Content: Includes structured lessons for the Engine, Brakes, and Drivetrain, featuring multi-step slides and progress tracking.
+## 🛠️ Tech Stack
 
-Introductory Wizard: A step-by-step onboarding flow powered by framer-motion to guide users on how to use the physical and digital exhibit.
+* **Frontend**: React 19 and Vite.
+* **3D Rendering**: Three.js, React Three Fiber, and React Three Drei.
+* **Animation**: Framer Motion.
+* **Backend/Realtime**: Firebase Realtime Database and Firebase Hosting.
+* **Routing**: React Router DOM.
 
-Tech Stack
-Frontend: React 19, Vite
+## 📂 Project Structure
 
-3D Rendering: Three.js, React Three Fiber, React Three Drei
+* **`src/pages/Dashboard.jsx`**: The main exhibit view. It handles 3D rendering, camera controls, and the educational overlay UI.
+* **`src/pages/TapRemote.jsx`**: The mobile interface that acts as a relay, sending "scanned" part data to Firebase.
+* **`src/lib/firebase.js`**: Centralized configuration and initialization for Firebase services.
+* **`src/data/dashboardContent.js`**: The central store for educational text, 3D hotspot coordinates, and camera positions.
 
-Animation: Framer Motion
+## 📡 How the NFC Integration Works
 
-Backend/Realtime: Firebase Realtime Database & Hosting
+1.  **Mobile Relay**: A smartphone with the `TapRemote` page open acts as the scanner.
+2.  **Tag Scan**: When an NFC tag is scanned, it directs the phone to a URL such as `https://<your-app>.web.app/tap?part=engine`.
+3.  **Database Update**: The `TapRemote` component detects the `part` query parameter and updates the `dashboard/activeCarPart` path in the Firebase Realtime Database.
+4.  **Dashboard Reaction**: The main Dashboard page listens for changes to that database path and automatically pivots the 3D camera to the part while displaying the relevant lesson.
 
-Routing: React Router DOM
+## 🚀 Getting Started
 
-Project Structure
-src/pages/Dashboard.jsx: The main exhibit view. It handles 3D model rendering, camera controls, and the educational overlay UI.
+### Prerequisites
+* Node.js installed.
+* A Firebase project with Realtime Database enabled.
 
-src/pages/TapRemote.jsx: The mobile interface. It acts as a relay that sends "scanned" part data to Firebase.
+### Installation
+1.  Clone the repository.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Configure environment variables in a `.env` file with your Firebase credentials (see `src/lib/firebase.js` for required fields):
+    * `VITE_FIREBASE_API_KEY`
+    * `VITE_FIREBASE_PROJECT_ID`
+    * `VITE_FIREBASE_DATABASE_URL`
 
-src/lib/firebase.js: Configuration and initialization for the Firebase connection.
-
-src/data/dashboardContent.js: The central store for educational text, 3D hotspot coordinates, and camera positions.
-
-Getting Started
-Prerequisites
-Node.js installed
-
-A Firebase project with a Realtime Database enabled
-
-Installation
-Clone the repository.
-
-Install dependencies:
-
-Bash
-npm install
-Configure environment variables by creating a .env file (see .env.example) with your Firebase credentials:
-
-VITE_FIREBASE_API_KEY
-
-VITE_FIREBASE_PROJECT_ID
-
-(And other standard Firebase config fields)
-
-Development
+### Development
 Run the development server:
-
-Bash
+```bash
 npm run dev
-Deployment
-To build and deploy the hosting site to Firebase:
-
-Bash
-npm run deploy:hosting
-How the NFC Integration Works
-Mobile Relay: A smartphone with the TapRemote page open acts as the scanner.
-
-Tag Scan: When an NFC tag is scanned, it directs the phone to a URL like https://<your-app>.web.app/tap?part=engine.
-
-Database Update: The TapRemote component detects the part query parameter and updates the dashboard/activeCarPart path in Firebase.
-
-Dashboard Reaction: The main Dashboard page listens for changes to that database path and automatically pivots the 3D camera to the engine while displaying the relevant lesson slides.
